@@ -1,0 +1,5 @@
+{
+  "name": "GiroPositivo",
+  "description": "Um sistema financeiro inteligente para motoristas de aplicativo com controle de custos, combustível e metas de lucro.",
+  "requestFramePermissions": []
+}
