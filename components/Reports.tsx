@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { Entry, EntryType, Platform, Vehicle, Journey } from '../types';
+import { Entry, EntryType, Platform, Vehicle, Journey, ContractStatus, VehicleType } from '../types';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { isWithinInterval, differenceInMinutes, differenceInCalendarDays } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
@@ -14,7 +14,7 @@ interface ReportsProps {
 }
 
 export const Reports: React.FC<ReportsProps> = ({ entries, vehicle, journeys }) => {
-  const [period, setPeriod] = useState<number | 'custom'>(30);
+  const [period, setPeriod] = useState<number | 'custom' | 'contract'>(30);
   const [selectedPlatform, setSelectedPlatform] = useState<Platform | 'ALL'>('ALL');
   
   const nowBR = useMemo(() => getNowInBR(), []);
@@ -41,6 +41,21 @@ export const Reports: React.FC<ReportsProps> = ({ entries, vehicle, journeys }) 
   if (period === 'custom') {
     rangeStart = startOfDay(toZonedTime(parseISO(customStart), BR_TZ));
     rangeEnd = endOfDay(toZonedTime(parseISO(customEnd), BR_TZ));
+  } else if (period === 'contract') {
+    rangeStart = startOfDay(toZonedTime(parseISO(vehicle.contractStart), BR_TZ));
+    
+    // Se for carro alugado, queremos ver o custo TOTAL do contrato quando selecionamos o filtro "Contrato",
+    // independente de estarmos no meio dele.
+    if (vehicle.type === VehicleType.RENTED) {
+        rangeEnd = endOfDay(toZonedTime(parseISO(vehicle.contractEnd), BR_TZ));
+    } else {
+        // Para carro próprio (custo mensal contínuo), mantemos a lógica de "até agora" ou "até o fim" se finalizado.
+        if (vehicle.status === ContractStatus.FINISHED) {
+            rangeEnd = endOfDay(toZonedTime(parseISO(vehicle.contractEnd), BR_TZ));
+        } else {
+            rangeEnd = endOfDay(nowBR);
+        }
+    }
   } else {
     rangeStart = startOfDay(subDays(nowBR, period === 1 ? 0 : period - 1));
     rangeEnd = endOfDay(nowBR);
@@ -77,6 +92,7 @@ export const Reports: React.FC<ReportsProps> = ({ entries, vehicle, journeys }) 
     .filter(e => e.type === EntryType.EXPENSE)
     .reduce((s, e) => s + e.amount, 0);
 
+  // APP_RECHARGE is intentionally excluded from expenses as it is just a balance movement
   const totalExpenses = fuel + appTax + variableExpenses + contractCostInPeriod;
   const netProfit = revenue - totalExpenses;
 
@@ -107,7 +123,7 @@ export const Reports: React.FC<ReportsProps> = ({ entries, vehicle, journeys }) 
 
   // KPIs
   const totalHours = totalMinutes / 60;
-  const gainPerHour = totalHours > 0 ? netProfit / totalHours : 0;
+  const gainPerHour = totalHours > 0 ? revenue / totalHours : 0;
   const revenuePerKm = totalDistance > 0 ? revenue / totalDistance : 0;
   const kmPerLiter = totalLiters > 0 ? totalDistance / totalLiters : 0;
 
@@ -130,8 +146,8 @@ export const Reports: React.FC<ReportsProps> = ({ entries, vehicle, journeys }) 
       <div className="bg-white p-4 rounded-[2rem] border border-gray-100 shadow-sm space-y-4">
         {/* Date Range Buttons */}
         <div className="flex gap-1 p-1 bg-gray-50 rounded-2xl">
-          {(['Hoje', '7 dias', '30 dias', 'Custom'] as const).map((label, idx) => {
-            const vals: (number | 'custom')[] = [1, 7, 30, 'custom'];
+          {(['Hoje', '7 dias', '30 dias', 'Contrato', 'Custom'] as const).map((label, idx) => {
+            const vals: (number | 'custom' | 'contract')[] = [1, 7, 30, 'contract', 'custom'];
             const val = vals[idx];
             const isActive = period === val;
             return (

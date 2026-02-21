@@ -429,65 +429,119 @@ export const Menu: React.FC<MenuProps> = ({ vehicle, contracts, user, onUpdateUs
               </button>
            </div>
            
-           <form onSubmit={handleSaveJourneyEdit} className="flex-1 overflow-y-auto p-6 space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Data Referência</label>
-                  <div className="relative">
-                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
-                    <input 
-                      type="date" 
-                      className="w-full bg-gray-50 border border-gray-100 p-4 pl-12 rounded-2xl text-xs font-bold"
-                      value={editingJourney.dataReferencia}
-                      onChange={e => setEditingJourney({...editingJourney, dataReferencia: e.target.value})}
-                    />
-                  </div>
+            <form onSubmit={handleSaveJourneyEdit} className="flex-1 overflow-y-auto p-6 space-y-8">
+              
+              {/* Seção Início */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 mb-2">
+                    <div className="w-1 h-4 bg-emerald-500 rounded-full"></div>
+                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Início da Jornada</h4>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">KM Inicial</label>
-                  <div className="relative">
-                    <Gauge className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
-                    <input 
-                      type="tel" 
-                      className="w-full bg-gray-50 border border-gray-100 p-4 pl-12 rounded-2xl text-xs font-bold"
-                      value={editingJourney.kmInicio}
-                      onChange={e => setEditingJourney({...editingJourney, kmInicio: parseInt(e.target.value) || 0})}
-                    />
-                  </div>
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Início Real</label>
-                  <div className="relative">
-                    <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
-                    <input 
-                      type="datetime-local" 
-                      className="w-full bg-gray-50 border border-gray-100 p-4 pl-12 rounded-2xl text-[10px] font-bold"
-                      value={editingJourney.dataInicioReal.slice(0, 16)}
-                      onChange={e => setEditingJourney({...editingJourney, dataInicioReal: new Date(e.target.value).toISOString()})}
-                    />
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Data e Hora de Início</label>
+                  <div className="grid grid-cols-5 gap-2">
+                    <div className="relative col-span-3">
+                      <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
+                      <input 
+                        type="date" 
+                        className="w-full bg-gray-50 border border-gray-100 p-4 pl-12 rounded-2xl text-[11px] font-bold text-gray-700 focus:bg-white focus:border-emerald-500 transition-all outline-none"
+                        value={format(new Date(editingJourney.dataInicioReal), 'yyyy-MM-dd')}
+                        onChange={e => {
+                           const time = format(new Date(editingJourney.dataInicioReal), 'HH:mm');
+                           const newDate = new Date(`${e.target.value}T${time}`);
+                           setEditingJourney({
+                               ...editingJourney, 
+                               dataInicioReal: newDate.toISOString(),
+                               dataReferencia: e.target.value
+                           });
+                        }}
+                      />
+                    </div>
+                    <div className="relative col-span-2">
+                      <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
+                      <input 
+                        type="time" 
+                        className="w-full bg-gray-50 border border-gray-100 p-4 pl-12 rounded-2xl text-[11px] font-bold text-gray-700 focus:bg-white focus:border-emerald-500 transition-all outline-none"
+                        value={format(new Date(editingJourney.dataInicioReal), 'HH:mm')}
+                        onChange={e => {
+                           const date = format(new Date(editingJourney.dataInicioReal), 'yyyy-MM-dd');
+                           const newDate = new Date(`${date}T${e.target.value}`);
+                           setEditingJourney({...editingJourney, dataInicioReal: newDate.toISOString()});
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Saldo Inicial App</label>
-                  <div className="relative">
-                    <Wallet className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
-                    <input 
-                      type="tel" 
-                      className="w-full bg-gray-50 border border-gray-100 p-4 pl-12 rounded-2xl text-xs font-bold"
-                      value={formatMoneyInput((editingJourney.balanceStart * 100).toString())}
-                      onChange={e => setEditingJourney({...editingJourney, balanceStart: parseMoneyInput(e.target.value)})}
-                    />
-                  </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">KM Inicial</label>
+                      <div className="relative">
+                        <Gauge className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
+                        <input 
+                          type="tel" 
+                          className="w-full bg-gray-50 border border-gray-100 p-4 pl-12 rounded-2xl text-xs font-bold text-gray-700 focus:bg-white focus:border-emerald-500 transition-all outline-none"
+                          value={editingJourney.kmInicio}
+                          onChange={e => setEditingJourney({...editingJourney, kmInicio: parseInt(e.target.value) || 0})}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Saldo Inicial App</label>
+                      <div className="relative">
+                        <Wallet className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
+                        <input 
+                          type="tel" 
+                          className="w-full bg-gray-50 border border-gray-100 p-4 pl-12 rounded-2xl text-xs font-bold text-gray-700 focus:bg-white focus:border-emerald-500 transition-all outline-none"
+                          value={formatMoneyInput((editingJourney.balanceStart * 100).toString())}
+                          onChange={e => setEditingJourney({...editingJourney, balanceStart: parseMoneyInput(e.target.value)})}
+                        />
+                      </div>
+                    </div>
                 </div>
               </div>
 
               {editingJourney.encerrada && (
-                <>
-                  <div className="pt-4 border-t border-gray-50 space-y-6">
-                    <h4 className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Informações de Fechamento</h4>
+                  <div className="space-y-4 pt-4 border-t border-gray-50">
+                    <div className="flex items-center gap-2 mb-2">
+                        <div className="w-1 h-4 bg-blue-500 rounded-full"></div>
+                        <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Fechamento</h4>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Data e Hora de Fim</label>
+                      <div className="grid grid-cols-5 gap-2">
+                        <div className="relative col-span-3">
+                          <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
+                          <input 
+                            type="date" 
+                            className="w-full bg-gray-50 border border-gray-100 p-4 pl-12 rounded-2xl text-[11px] font-bold text-gray-700 focus:bg-white focus:border-blue-500 transition-all outline-none"
+                            value={editingJourney.dataFimReal ? format(new Date(editingJourney.dataFimReal), 'yyyy-MM-dd') : ''}
+                            onChange={e => {
+                               if (!editingJourney.dataFimReal) return;
+                               const time = format(new Date(editingJourney.dataFimReal), 'HH:mm');
+                               const newDate = new Date(`${e.target.value}T${time}`);
+                               setEditingJourney({...editingJourney, dataFimReal: newDate.toISOString()});
+                            }}
+                          />
+                        </div>
+                        <div className="relative col-span-2">
+                          <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
+                          <input 
+                            type="time" 
+                            className="w-full bg-gray-50 border border-gray-100 p-4 pl-12 rounded-2xl text-[11px] font-bold text-gray-700 focus:bg-white focus:border-blue-500 transition-all outline-none"
+                            value={editingJourney.dataFimReal ? format(new Date(editingJourney.dataFimReal), 'HH:mm') : ''}
+                            onChange={e => {
+                               if (!editingJourney.dataFimReal) return;
+                               const date = format(new Date(editingJourney.dataFimReal), 'yyyy-MM-dd');
+                               const newDate = new Date(`${date}T${e.target.value}`);
+                               setEditingJourney({...editingJourney, dataFimReal: newDate.toISOString()});
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
                     
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1">
@@ -496,7 +550,7 @@ export const Menu: React.FC<MenuProps> = ({ vehicle, contracts, user, onUpdateUs
                           <Gauge className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
                           <input 
                             type="tel" 
-                            className="w-full bg-gray-50 border border-gray-100 p-4 pl-12 rounded-2xl text-xs font-bold"
+                            className="w-full bg-gray-50 border border-gray-100 p-4 pl-12 rounded-2xl text-xs font-bold text-gray-700 focus:bg-white focus:border-blue-500 transition-all outline-none"
                             value={editingJourney.kmFim || ''}
                             onChange={e => setEditingJourney({...editingJourney, kmFim: parseInt(e.target.value) || 0})}
                           />
@@ -508,43 +562,29 @@ export const Menu: React.FC<MenuProps> = ({ vehicle, contracts, user, onUpdateUs
                           <Wallet className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
                           <input 
                             type="tel" 
-                            className="w-full bg-gray-50 border border-gray-100 p-4 pl-12 rounded-2xl text-xs font-bold"
+                            className="w-full bg-gray-50 border border-gray-100 p-4 pl-12 rounded-2xl text-xs font-bold text-gray-700 focus:bg-white focus:border-blue-500 transition-all outline-none"
                             value={formatMoneyInput(((editingJourney.balanceEnd || 0) * 100).toString())}
                             onChange={e => setEditingJourney({...editingJourney, balanceEnd: parseMoneyInput(e.target.value)})}
                           />
                         </div>
                       </div>
                     </div>
-
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Fim Real</label>
-                      <div className="relative">
-                        <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
-                        <input 
-                          type="datetime-local" 
-                          className="w-full bg-gray-50 border border-gray-100 p-4 pl-12 rounded-2xl text-[10px] font-bold"
-                          value={editingJourney.dataFimReal?.slice(0, 16) || ''}
-                          onChange={e => setEditingJourney({...editingJourney, dataFimReal: new Date(e.target.value).toISOString()})}
-                        />
-                      </div>
-                    </div>
                   </div>
-                </>
               )}
 
               <div className="pt-6 pb-20">
                   <button
                     type="submit"
-                    className="w-full bg-emerald-600 text-white font-black py-5 rounded-3xl text-xs uppercase tracking-widest shadow-xl shadow-emerald-100 flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+                    className="w-full bg-emerald-600 text-white font-black py-5 rounded-3xl text-xs uppercase tracking-widest shadow-xl shadow-emerald-100 flex items-center justify-center gap-2 active:scale-[0.98] transition-all hover:bg-emerald-700"
                   >
-                    Salvar Alterações na Jornada
+                    Salvar Alterações
                   </button>
                   <button
                     type="button"
                     onClick={() => setEditingJourney(null)}
                     className="w-full py-4 text-gray-400 font-bold uppercase text-[10px] tracking-widest hover:text-gray-600 transition-colors mt-2"
                   >
-                    Cancelar Edição
+                    Cancelar
                   </button>
               </div>
            </form>

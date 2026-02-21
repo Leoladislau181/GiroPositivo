@@ -17,7 +17,6 @@ export const VehicleSetup: React.FC<VehicleSetupProps> = ({ userId, onComplete, 
   const [profitGoalDisplay, setProfitGoalDisplay] = useState('4.500,00');
   const [contractValueDisplay, setContractValueDisplay] = useState('1.200,00');
   const [carInstallmentDisplay, setCarInstallmentDisplay] = useState('0,00');
-  const [appBalanceDisplay, setAppBalanceDisplay] = useState('0,00');
 
   const [data, setData] = useState({
     name: '',
@@ -98,7 +97,7 @@ export const VehicleSetup: React.FC<VehicleSetupProps> = ({ userId, onComplete, 
       name,
       type,
       currentOdometer: parseInt(currentOdometer) || 0,
-      appBalance: parseMoneyInput(appBalanceDisplay),
+      appBalance: 0,
       profitGoal: parseMoneyInput(profitGoalDisplay),
       contractValue: parseMoneyInput(contractValueDisplay),
       carInstallment: type === VehicleType.OWNED ? parseMoneyInput(carInstallmentDisplay) : undefined,
@@ -236,21 +235,6 @@ export const VehicleSetup: React.FC<VehicleSetupProps> = ({ userId, onComplete, 
                     </div>
                   </div>
                 )}
-                
-                <div className="space-y-1">
-                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Saldo Atual App</label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-[10px] font-bold">R$</span>
-                      <input 
-                        type="tel" 
-                        className="w-full bg-gray-50 border border-gray-100 p-3 pl-8 rounded-xl text-sm font-bold focus:outline-none focus:border-emerald-500 transition-colors" 
-                        value={appBalanceDisplay} 
-                        onFocus={e => handleFocus('appbal', appBalanceDisplay, setAppBalanceDisplay, e)}
-                        onBlur={() => handleBlur('appbal', appBalanceDisplay, setAppBalanceDisplay)}
-                        onChange={e => setAppBalanceDisplay(formatMoneyInput(e.target.value))} 
-                      />
-                    </div>
-                </div>
               </div>
 
               {type === VehicleType.RENTED && (

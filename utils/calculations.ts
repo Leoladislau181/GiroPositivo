@@ -131,6 +131,7 @@ export const getDailyStats = (date: Date, entries: Entry[], vehicle: Vehicle, jo
   const dayEntries = entries.filter(e => formatToBRDate(e.date) === dateStrBR);
   
   const revenue = dayEntries.filter(e => e.type === EntryType.REVENUE).reduce((sum, e) => sum + e.amount, 0);
+  // Explicitly exclude APP_RECHARGE from expenses
   const expenses = dayEntries.filter(e => e.type === EntryType.EXPENSE).reduce((sum, e) => sum + e.amount, 0);
   const fuelCost = dayEntries.filter(e => e.type === EntryType.FUEL).reduce((sum, e) => sum + e.amount, 0);
   const appTaxCost = dayEntries.filter(e => e.type === EntryType.APP_TAX && !e.isRecharge).reduce((sum, e) => sum + e.amount, 0);

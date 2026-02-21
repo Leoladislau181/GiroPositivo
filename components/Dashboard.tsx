@@ -2,7 +2,7 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { Entry, Vehicle, DailyStats, Journey, ContractStatus, EntryType } from '../types';
 import { getDailyStats, formatDuration, getContractStatus, getNowInBR, formatToBRDate, BR_TZ, parseISO } from '../utils/calculations';
-import { TrendingUp, Fuel, Wallet, Calendar, Target, Play, Square, MapPin, Gauge, CheckCircle2, Clock, Smartphone, PlusCircle, TrendingDown, Tag, X, Layers } from 'lucide-react';
+import { TrendingUp, Fuel, Wallet, Calendar, Target, Play, Square, MapPin, Gauge, CheckCircle2, Clock, Smartphone, PlusCircle, TrendingDown, Tag, X, Layers, AlertCircle } from 'lucide-react';
 import { format as formatTZ } from 'date-fns-tz';
 import { v4 as uuidv4 } from 'uuid';
 import { formatMoneyInput, parseMoneyInput } from '../utils/formatters';
@@ -19,6 +19,8 @@ interface DashboardProps {
 
 export const Dashboard: React.FC<DashboardProps> = ({ userId, entries, vehicle, journeys, onUpdateJourney, onDeleteJourney, onSetupContract }) => {
   const [showJourneyModal, setShowJourneyModal] = useState<'START' | 'END' | 'HISTORY' | null>(null);
+  const [showFirstJourneyAlert, setShowFirstJourneyAlert] = useState(false);
+  const [showFirstEndJourneyAlert, setShowFirstEndJourneyAlert] = useState(false);
   const [kmInput, setKmInput] = useState<string>('');
   const [balanceInput, setBalanceInput] = useState<string>('');
   const backups = useRef<Record<string, string>>({});
@@ -52,25 +54,35 @@ export const Dashboard: React.FC<DashboardProps> = ({ userId, entries, vehicle, 
 
   // Lógica de Agrupamento
   const groupedActivities = useMemo(() => {
-    const groups: Record<string, { total: number, type: EntryType, count: number, isRecharge: boolean, origin?: string }> = {};
+    const groups: Record<string, { total: number, type: EntryType, count: number, isRecharge: boolean, origin?: string, displayCategory: string }> = {};
     
     todayActivities.forEach(e => {
-      const key = e.category;
+      let key = e.category;
+      let displayCategory = e.category;
+
+      if (e.type === EntryType.APP_RECHARGE) {
+        key = 'recharge_group';
+        displayCategory = 'Saldo do App';
+      } else if (e.origin === 'automatic') {
+        key = 'automatic_group';
+        displayCategory = 'Saldo Utilizado';
+      }
+
       if (!groups[key]) {
         groups[key] = { 
           total: 0, 
           type: e.type, 
           count: 0,
-          isRecharge: e.isRecharge || false,
-          origin: e.origin
+          isRecharge: e.type === EntryType.APP_RECHARGE,
+          origin: e.origin,
+          displayCategory
         };
       }
       groups[key].total += e.amount;
       groups[key].count += 1;
     });
 
-    return Object.entries(groups)
-      .map(([name, data]) => ({ name, ...data }))
+    return Object.values(groups)
       .sort((a, b) => b.total - a.total);
   }, [todayActivities]);
 
@@ -124,9 +136,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ userId, entries, vehicle, 
     const parsedKm = parseInt(kmInput, 10);
     const finalKm = !isNaN(parsedKm) ? parsedKm : (vehicle.currentOdometer || 0);
     
+    // Check if this is the first journey for the active contract
+    const hasPriorJourneys = journeys.some(j => 
+        parseISO(j.dataInicioReal) >= parseISO(vehicle.contractStart)
+    );
+
     const newJourney: Journey = {
       id: uuidv4(),
       userId: userId,
+      contractId: vehicle.id, // Vínculo com o contrato ativo
       dataReferencia: todayStrBR,
       dataInicioReal: new Date().toISOString(), 
       kmInicio: finalKm,
@@ -137,6 +155,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ userId, entries, vehicle, 
     onUpdateJourney(newJourney);
     setShowJourneyModal(null);
     setKmInput('');
+
+    if (!hasPriorJourneys) {
+        setShowFirstJourneyAlert(true);
+    }
   };
 
   const handleEndJourney = () => {
@@ -175,6 +197,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userId, entries, vehicle, 
       case EntryType.REVENUE: return <TrendingUp className="text-emerald-500" size={16} />;
       case EntryType.FUEL: return <Fuel className="text-amber-500" size={16} />;
       case EntryType.APP_TAX: return <Smartphone className="text-blue-500" size={16} />;
+      case EntryType.APP_RECHARGE: return <Smartphone className="text-emerald-500" size={16} />;
       default: return <TrendingDown className="text-red-500" size={16} />;
     }
   };
@@ -215,7 +238,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userId, entries, vehicle, 
           
           <div className="pt-4 border-t border-white/20 flex justify-between items-end">
               <div className="flex flex-col">
-                  <span className="text-[10px] text-white/70 uppercase font-bold tracking-widest mb-1">Lucro Líquido</span>
+                  <span className="text-[10px] text-white/70 uppercase font-bold tracking-widest mb-1">Resultado Líquido</span>
                   <span className="text-2xl font-black tracking-tight">{formatCurrency(stats.netProfit)}</span>
               </div>
               <div className="flex flex-col items-end text-right">
@@ -247,6 +270,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ userId, entries, vehicle, 
                 setKmInput(vehicle.currentOdometer?.toString() || ''); 
                 setBalanceInput(formatMoneyInput(((vehicle.appBalance || 0) * 100).toString())); 
                 setShowJourneyModal('END'); 
+                
+                const hasCompletedJourneys = journeys.some(j => 
+                  j.encerrada && 
+                  parseISO(j.dataInicioReal) >= parseISO(vehicle.contractStart)
+                );
+                
+                if (!hasCompletedJourneys) {
+                  setShowFirstEndJourneyAlert(true);
+                }
               }}
               className="px-5 py-3 bg-red-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-red-200 active:scale-95 transition-all flex items-center gap-2 hover:bg-red-600"
             >
@@ -390,15 +422,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ userId, entries, vehicle, 
                </p>
             </div>
           ) : (
-            groupedActivities.map((group) => (
-              <div key={group.name} className="flex items-center justify-between p-3 rounded-2xl hover:bg-gray-50 transition-colors group cursor-default">
+            groupedActivities.map((group, idx) => (
+              <div key={idx} className="flex items-center justify-between p-3 rounded-2xl hover:bg-gray-50 transition-colors group cursor-default">
                 <div className="flex items-center gap-4">
                   <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shadow-sm border border-gray-100 bg-white group-hover:scale-110 transition-transform duration-300`}>
                     {getEntryIcon(group.type)}
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <p className="text-xs font-black text-gray-800 uppercase tracking-tight">{group.name}</p>
+                      <p className="text-xs font-black text-gray-800 uppercase tracking-tight">{group.displayCategory}</p>
                       {group.origin === 'automatic' && <span className="text-[7px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider">AUTO</span>}
                       {group.isRecharge && <span className="text-[7px] bg-emerald-100 text-emerald-600 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider">RECARGA</span>}
                     </div>
@@ -412,8 +444,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ userId, entries, vehicle, 
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className={`text-sm font-black tracking-tight ${group.type === EntryType.REVENUE || group.isRecharge ? 'text-emerald-600' : 'text-red-500'}`}>
-                    {(group.type === EntryType.REVENUE || group.isRecharge) ? '+' : ''}{formatCurrency(group.total)}
+                  <p className={`text-sm font-black tracking-tight ${
+                    group.type === EntryType.REVENUE ? 'text-emerald-600' : 
+                    group.isRecharge ? 'text-blue-600' : 'text-red-500'
+                  }`}>
+                    {group.type === EntryType.REVENUE ? '+' : ''}{formatCurrency(group.total)}
                   </p>
                 </div>
               </div>
@@ -484,6 +519,50 @@ export const Dashboard: React.FC<DashboardProps> = ({ userId, entries, vehicle, 
                 {showJourneyModal === 'START' ? 'Confirmar Início' : 'Confirmar Encerramento'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* First Journey Alert Modal */}
+      {showFirstJourneyAlert && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowFirstJourneyAlert(false)} />
+          <div className="relative bg-white w-full max-w-xs rounded-[2rem] p-8 shadow-2xl animate-in zoom-in-95 duration-300 text-center">
+            <div className="mx-auto w-16 h-16 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center mb-6 shadow-lg shadow-blue-100">
+              <AlertCircle size={32} />
+            </div>
+            <h3 className="text-xl font-black text-gray-800 uppercase tracking-tight mb-3">Atenção</h3>
+            <p className="text-xs text-gray-500 font-medium leading-relaxed mb-8">
+              Se utiliza uma plataforma que precise de créditos para trabalhar, faça um lançamento de "Despesa" com a categoria "Taxa (Recarga)".
+            </p>
+            <button 
+              onClick={() => setShowFirstJourneyAlert(false)}
+              className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-blue-200 active:scale-95 transition-all hover:bg-blue-700"
+            >
+              Entendi
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* First End Journey Alert Modal */}
+      {showFirstEndJourneyAlert && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 animate-in fade-in duration-300">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowFirstEndJourneyAlert(false)} />
+          <div className="relative bg-white w-full max-w-xs rounded-[2rem] p-8 shadow-2xl animate-in zoom-in-95 duration-300 text-center">
+            <div className="mx-auto w-16 h-16 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center mb-6 shadow-lg shadow-emerald-100">
+              <AlertCircle size={32} />
+            </div>
+            <h3 className="text-xl font-black text-gray-800 uppercase tracking-tight mb-3">Dica Importante</h3>
+            <p className="text-xs text-gray-500 font-medium leading-relaxed mb-8">
+              Adicione o Valor Atual de Crédito e nós faremos o cálculo de quanto foi gasto em sua Jornada.
+            </p>
+            <button 
+              onClick={() => setShowFirstEndJourneyAlert(false)}
+              className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-emerald-200 active:scale-95 transition-all hover:bg-emerald-700"
+            >
+              Entendi
+            </button>
           </div>
         </div>
       )}

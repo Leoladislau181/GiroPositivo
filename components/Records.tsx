@@ -16,7 +16,6 @@ export const Records: React.FC<RecordsProps> = ({ entries, onDelete, onEdit }) =
   const [filter, setFilter] = useState<FilterType>('ALL');
 
   const filtered = entries
-    .filter(e => e.origin !== 'manual_recharge')
     .filter(e => {
       if (filter === 'ALL') return true;
       if (filter === 'REVENUE') return e.type === EntryType.REVENUE;
@@ -79,11 +78,16 @@ export const Records: React.FC<RecordsProps> = ({ entries, onDelete, onEdit }) =
         ) : (
           filtered.map(entry => {
             const isAutomatic = entry.origin === 'automatic';
+            const isRecharge = entry.isRecharge;
+            const displayCategory = isRecharge ? 'Saldo do App' : entry.category;
+            const amountColor = entry.type === EntryType.REVENUE ? 'text-emerald-600' : (isRecharge ? 'text-blue-600' : 'text-red-500');
+            const indicatorColor = entry.type === EntryType.REVENUE ? 'bg-emerald-500' : (isRecharge ? 'bg-blue-500' : 'bg-red-500');
+
             return (
               <div key={entry.id} className={`bg-white p-4 rounded-[1.5rem] shadow-sm border border-gray-100 flex items-center justify-between group active:scale-[0.99] transition-all cursor-default relative overflow-hidden ${isAutomatic ? 'bg-blue-50/20' : ''}`}>
                 
                 {/* Indicador lateral colorido */}
-                <div className={`absolute left-0 top-4 bottom-4 w-1 rounded-r-full ${entry.type === EntryType.REVENUE ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
+                <div className={`absolute left-0 top-4 bottom-4 w-1 rounded-r-full ${indicatorColor}`}></div>
 
                 <div className="flex items-center gap-4 pl-3">
                   <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm border border-gray-100 ${isAutomatic ? 'bg-blue-50' : 'bg-gray-50'}`}>
@@ -91,10 +95,15 @@ export const Records: React.FC<RecordsProps> = ({ entries, onDelete, onEdit }) =
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <p className="text-sm font-black text-gray-800 uppercase tracking-tight line-clamp-1">{entry.category}</p>
+                      <p className="text-sm font-black text-gray-800 uppercase tracking-tight line-clamp-1">{displayCategory}</p>
                       {isAutomatic && (
                         <span className="text-[8px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider flex items-center gap-1">
                           <Lock size={8} /> AUTO
+                        </span>
+                      )}
+                      {entry.isRecharge && (
+                        <span className="text-[8px] bg-emerald-100 text-emerald-600 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider flex items-center gap-1">
+                          RECARGA
                         </span>
                       )}
                     </div>
@@ -106,7 +115,7 @@ export const Records: React.FC<RecordsProps> = ({ entries, onDelete, onEdit }) =
                 </div>
 
                 <div className="flex flex-col items-end shrink-0 pl-2">
-                  <p className={`text-sm font-black tracking-tight ${entry.type === EntryType.REVENUE ? 'text-emerald-600' : 'text-red-500'}`}>
+                  <p className={`text-sm font-black tracking-tight ${amountColor}`}>
                     {entry.type === EntryType.REVENUE ? '+' : ''}{formatCurrency(entry.amount)}
                   </p>
                   

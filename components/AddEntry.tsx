@@ -36,7 +36,7 @@ export const AddEntry: React.FC<AddEntryProps> = ({ userId, onAdd, onCancel, ini
 
   const backups = useRef<Record<string, string>>({});
 
-  const isRechargeCategory = tab === TabType.EXPENSE && category === 'Taxa de Aplicativo';
+  const isRechargeCategory = tab === TabType.EXPENSE && category === 'Recarga de App';
   const isFuelCategory = tab === TabType.EXPENSE && category === 'Combustível';
 
   const moveCursorToEnd = (el: HTMLInputElement) => {
@@ -92,8 +92,9 @@ export const AddEntry: React.FC<AddEntryProps> = ({ userId, onAdd, onCancel, ini
         finalPlatform = platform as Platform;
     } else {
         if (category === 'Combustível') finalType = EntryType.FUEL;
-        else if (category === 'Taxa de Aplicativo') {
-            finalType = EntryType.APP_TAX;
+        else if (category === 'Recarga de App') {
+            finalType = EntryType.APP_RECHARGE;
+            // Automatically detect recharge based on category
             isRecharge = true; 
             origin = 'manual_recharge';
         }
@@ -114,7 +115,7 @@ export const AddEntry: React.FC<AddEntryProps> = ({ userId, onAdd, onCancel, ini
         kmRecorded: kmRecorded ? parseFloat(kmRecorded) : undefined,
         pricePerLiter: finalType === EntryType.FUEL ? parseMoneyInput(pricePerLiterDisplay) : undefined,
         discount: finalDiscountValue > 0 ? finalDiscountValue : undefined,
-        isRecharge,
+        isRecharge, // Automatically set
         origin
       };
       onAdd(newEntry);
@@ -160,7 +161,7 @@ export const AddEntry: React.FC<AddEntryProps> = ({ userId, onAdd, onCancel, ini
                   <select value={category} onChange={e => setCategory(e.target.value)} className="w-full bg-white border border-gray-200 p-4 rounded-2xl text-sm font-bold text-gray-700 focus:outline-none focus:border-emerald-500 transition-colors appearance-none">
                     <option value="" disabled>Selecionar</option>
                     <option value="Combustível">Combustível</option>
-                    <option value="Taxa de Aplicativo">Taxa (Recarga)</option>
+                    <option value="Recarga de App">Recarga App</option>
                     <option value="Alimentação">Alimentação</option>
                     <option value="Outros">Outros</option>
                   </select>

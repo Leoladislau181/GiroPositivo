@@ -62,30 +62,84 @@ const App: React.FC = () => {
       return status === ContractStatus.ACTIVE || status === ContractStatus.FUTURE;
     });
 
-    if (active) return active;
+    return active || undefined;
+  }, [userContracts]);
 
-    // 2. Fail-safe: Se não houver contrato ativo, mas houver uma JORNADA ATIVA,
-    // retornamos o contrato mais recente (mesmo que expirado) para permitir o encerramento da jornada.
-    if (activeJourney && userContracts.length > 0) {
-       const sortedContracts = [...userContracts].sort((a, b) => 
-         new Date(b.contractEnd).getTime() - new Date(a.contractEnd).getTime()
-       );
-       return sortedContracts[0];
+  // Migration Effect: Backfill contractId for existing records
+  useEffect(() => {
+    if (isLoading || !currentUser || allContracts.length === 0) return;
+
+    let hasChanges = false;
+    
+    // Sort contracts by date to ensure correct assignment
+    const sortedContracts = [...allContracts].sort((a, b) => 
+      new Date(a.contractStart).getTime() - new Date(b.contractStart).getTime()
+    );
+
+    const newEntries = allEntries.map(e => {
+      if (e.contractId) return e;
+      
+      // Find matching contract
+      const contract = sortedContracts.find(c => {
+        const start = c.contractStart;
+        const end = c.status === ContractStatus.FINISHED ? c.contractEnd : '2099-12-31';
+        return e.date >= start && e.date <= end;
+      });
+
+      if (contract) {
+        hasChanges = true;
+        return { ...e, contractId: contract.id };
+      }
+      return e;
+    });
+
+    const newJourneys = allJourneys.map(j => {
+      if (j.contractId) return j;
+
+      const contract = sortedContracts.find(c => {
+        const start = c.contractStart;
+        const end = c.status === ContractStatus.FINISHED ? c.contractEnd : '2099-12-31';
+        return j.dataInicioReal >= start && (j.dataFimReal ? j.dataFimReal <= end : true);
+      });
+
+      if (contract) {
+        hasChanges = true;
+        return { ...j, contractId: contract.id };
+      }
+      return j;
+    });
+
+    if (hasChanges) {
+      console.log("Migrating data to include contractId...");
+      setAllEntries(newEntries);
+      setAllJourneys(newJourneys);
+      localStorage.setItem('gp_entries', JSON.stringify(newEntries));
+      localStorage.setItem('gp_journeys', JSON.stringify(newJourneys));
     }
+  }, [isLoading, currentUser, allContracts, allEntries, allJourneys]);
 
-    return undefined;
-  }, [userContracts, activeJourney]);
+  const activeContractEntries = useMemo(() => {
+    if (!activeContract) return [];
+    // Filter strictly by contractId
+    return userEntries.filter(e => e.contractId === activeContract.id);
+  }, [userEntries, activeContract]);
+
+  const activeContractJourneys = useMemo(() => {
+    if (!activeContract) return [];
+    // Filter strictly by contractId
+    return userJourneys.filter(j => j.contractId === activeContract.id);
+  }, [userJourneys, activeContract]);
 
   const currentAppBalance = useMemo(() => {
-    if (!currentUser) return 0;
-    const recharges = userEntries
-      .filter(e => e.isRecharge)
+    if (!currentUser || !activeContract) return 0;
+    const recharges = activeContractEntries
+      .filter(e => e.type === EntryType.APP_RECHARGE)
       .reduce((sum, e) => sum + e.amount, 0);
-    const spentFees = userEntries
+    const spentFees = activeContractEntries
       .filter(e => e.type === EntryType.APP_TAX && !e.isRecharge)
       .reduce((sum, e) => sum + e.amount, 0);
     return recharges - spentFees;
-  }, [userEntries, currentUser]);
+  }, [activeContractEntries, currentUser, activeContract]);
 
   useEffect(() => {
     const initApp = async () => {
@@ -138,8 +192,33 @@ const App: React.FC = () => {
 
   const handleAddEntry = (entry: Entry) => {
     if (!currentUser) return;
+    
+    if (!activeContract) {
+      alert("Não existe contrato ativo.");
+      return;
+    }
 
-    const newEntries = [entry, ...userEntries.filter(e => e.id !== entry.id)];
+    // Explicitly find active journey again to be safe
+    const currentActiveJourney = userJourneys.find(j => !j.encerrada && j.contractId === activeContract.id);
+
+    // Ensure contractId is set
+    // Also link to active journey if exists (crucial for recharge calculation)
+    // If it is a recharge, we MUST link it to the active journey if one exists
+    let journeyId = entry.journeyId;
+    if (entry.type === EntryType.APP_RECHARGE && currentActiveJourney) {
+        journeyId = currentActiveJourney.id;
+    } else if (currentActiveJourney) {
+        // For other entries, we also link to active journey if available, as a general rule
+        journeyId = currentActiveJourney.id;
+    }
+
+    const entryWithContract = { 
+        ...entry, 
+        contractId: activeContract.id,
+        journeyId: journeyId
+    };
+
+    const newEntries = [entryWithContract, ...userEntries.filter(e => e.id !== entry.id)];
     syncData('entries', newEntries);
 
     setEditingEntry(null);
@@ -147,31 +226,52 @@ const App: React.FC = () => {
   };
 
   const handleUpdateJourney = (journey: Journey) => {
-    if (!currentUser || !activeContract) return;
+    if (!currentUser) return;
+    
+    if (!activeContract) {
+      alert("Não existe contrato ativo.");
+      return;
+    }
 
-    const newJourneys = [journey, ...userJourneys.filter(j => j.id !== journey.id)];
+    // Ensure contractId is set
+    const journeyWithContract = { ...journey, contractId: activeContract.id };
+
+    const newJourneys = [journeyWithContract, ...userJourneys.filter(j => j.id !== journey.id)];
     syncData('journeys', newJourneys);
     
     if (journey.encerrada) {
+      // Calculate recharges within this specific journey's timeframe AND contract
+      // Now using type 'APP_RECHARGE' as the definitive identifier for recharges
+      // AND checking for explicit journey linkage OR time interval as fallback
       const rechargesInJourney = userEntries
-        .filter(e => e.isRecharge && isWithinInterval(parseISO(e.date), { 
-          start: parseISO(journey.dataInicioReal), 
-          end: parseISO(journey.dataFimReal || new Date().toISOString()) 
-        }))
+        .filter(e => 
+          e.contractId === activeContract.id && // Must belong to same contract
+          e.type === EntryType.APP_RECHARGE && // Identify by type
+          (
+            e.journeyId === journey.id || // Explicit link (preferred)
+            isWithinInterval(parseISO(e.date), { // Fallback for legacy/unlinked
+                start: parseISO(journey.dataInicioReal), 
+                end: parseISO(journey.dataFimReal || new Date().toISOString()) 
+            })
+          )
+        )
         .reduce((sum, e) => sum + e.amount, 0);
 
       const bStart = Number(journey.balanceStart) || 0;
       const bEnd = Number(journey.balanceEnd) || 0;
       
-      const spent = Math.max((bStart + rechargesInJourney) - bEnd, 0);
+      // Calculation: (Start + Recharges) - End
+      const totalAvailable = bStart + rechargesInJourney;
+      const tax = totalAvailable - bEnd;
 
-      if (spent > 0) {
+      if (tax > 0) {
         const autoEntry: Entry = {
           id: `tax-auto-${journey.id}`,
           userId: currentUser.id,
+          contractId: activeContract.id, // Link to active contract
           type: EntryType.APP_TAX,
           category: 'Taxa de Aplicativo',
-          amount: spent,
+          amount: tax,
           // IMPORTANTE: A data da taxa deve ser o FIM da jornada para consistência contábil no dia correto
           date: journey.dataFimReal || journey.dataInicioReal, 
           description: `Consumo automático (Km: ${journey.kmInicio} - ${journey.kmFim})`,
@@ -179,10 +279,12 @@ const App: React.FC = () => {
           isRecharge: false,
           origin: 'automatic'
         };
-        const updatedEntries = [autoEntry, ...userEntries.filter(e => e.journeyId !== journey.id)];
+        // FIX: Only remove previous AUTOMATIC entries for this journey, preserving recharges (manual_recharge)
+        const updatedEntries = [autoEntry, ...userEntries.filter(e => !(e.journeyId === journey.id && e.origin === 'automatic'))];
         syncData('entries', updatedEntries);
       } else {
-        syncData('entries', userEntries.filter(e => e.journeyId !== journey.id));
+        // If tax is <= 0, remove any existing automatic tax for this journey, but keep recharges
+        syncData('entries', userEntries.filter(e => !(e.journeyId === journey.id && e.origin === 'automatic')));
       }
 
       const updatedContracts = userContracts.map(c => {
@@ -218,7 +320,7 @@ const App: React.FC = () => {
     setConfirmConfig({
       isOpen: true,
       title: 'Encerrar Contrato',
-      message: 'Tem certeza que deseja encerrar o contrato atual? O cálculo de custos será interrompido na data de hoje.',
+      message: 'Ao encerrar o Contrato Você terá acesso as informações do contrato mas Não podera edita-los.',
       confirmLabel: 'Encerrar Agora',
       isDestructive: true,
       onConfirm: () => {
@@ -229,7 +331,24 @@ const App: React.FC = () => {
           contractEnd: now.toISOString() // Atualiza a data final para o momento do encerramento
         };
         
-        // Atualiza a lista de contratos
+        // 1. Encerrar jornada ativa vinculada ao contrato, se houver
+        const activeJourney = userJourneys.find(j => !j.encerrada && j.contractId === activeContract.id);
+        let updatedJourneys = userJourneys;
+        
+        if (activeJourney) {
+            const closedJourney: Journey = {
+                ...activeJourney,
+                encerrada: true,
+                dataFimReal: now.toISOString(),
+                // Mantém km e saldo do início se não foi informado (ou poderia pedir input, mas aqui é automático)
+                kmFim: activeJourney.kmInicio, 
+                balanceEnd: activeJourney.balanceStart
+            };
+            updatedJourneys = userJourneys.map(j => j.id === activeJourney.id ? closedJourney : j);
+            syncData('journeys', updatedJourneys);
+        }
+
+        // 2. Atualiza a lista de contratos
         const updatedContracts = userContracts.map(c => 
           c.id === activeContract.id ? updatedContract : c
         );
@@ -275,15 +394,15 @@ const App: React.FC = () => {
       {activeTab === 'home' && (
         <Dashboard 
           userId={currentUser.id} 
-          entries={userEntries} 
+          entries={activeContractEntries} 
           vehicle={activeContract ? { ...activeContract, appBalance: currentAppBalance } : null} 
-          journeys={userJourneys} 
+          journeys={activeContractJourneys} 
           onUpdateJourney={handleUpdateJourney} 
           onDeleteJourney={handleDeleteJourney} 
           onSetupContract={() => setActiveTab('setup')} 
         />
       )}
-      {activeTab === 'records' && <Records entries={userEntries} onDelete={(id) => {
+      {activeTab === 'records' && <Records entries={activeContractEntries} onDelete={(id) => {
         const entry = userEntries.find(e => e.id === id);
         if (entry?.origin === 'automatic') return alert("Taxas automáticas devem ser editadas ou removidas através do histórico de jornadas.");
         setConfirmConfig({
@@ -301,7 +420,7 @@ const App: React.FC = () => {
         setActiveTab('add'); 
       }} />}
       {activeTab === 'add' && activeContract && <AddEntry userId={currentUser.id} onAdd={handleAddEntry} onCancel={() => { setEditingEntry(null); setActiveTab('home'); }} initialEntry={editingEntry || undefined} />}
-      {activeTab === 'reports' && <Reports entries={userEntries} vehicle={activeContract || userContracts[0] || null} journeys={userJourneys} />}
+      {activeTab === 'reports' && <Reports entries={activeContractEntries} vehicle={activeContract || userContracts[0] || null} journeys={activeContractJourneys} />}
       {activeTab === 'menu' && (
         <Menu 
           vehicle={activeContract || null} 
@@ -312,7 +431,7 @@ const App: React.FC = () => {
           onLogout={handleLogout} 
           onDeleteContract={(id) => syncData('contracts', userContracts.filter(c => c.id !== id))} 
           onUpdateVehicle={(v) => activeContract && syncData('contracts', userContracts.map(c => c.id === activeContract.id ? { ...c, ...v } : c))} 
-          journeys={userJourneys} 
+          journeys={activeContractJourneys} 
           onDeleteJourney={handleDeleteJourney} 
           onUpdateJourney={handleUpdateJourney} 
           onOpenSetup={() => setActiveTab('setup')} 

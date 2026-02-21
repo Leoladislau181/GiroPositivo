@@ -14,7 +14,8 @@ export enum EntryType {
   REVENUE = 'REVENUE',
   FUEL = 'FUEL',
   APP_TAX = 'APP_TAX',
-  EXPENSE = 'EXPENSE'
+  EXPENSE = 'EXPENSE',
+  APP_RECHARGE = 'APP_RECHARGE'
 }
 
 export enum Platform {
@@ -52,6 +53,7 @@ export interface Vehicle {
 export interface Journey {
   id: string;
   userId: string;
+  contractId: string; // Vinculo com o contrato
   dataReferencia: string; // YYYY-MM-DD
   dataInicioReal: string; // ISO Datetime
   dataFimReal?: string;   // ISO Datetime
@@ -65,6 +67,7 @@ export interface Journey {
 export interface Entry {
   id: string;
   userId: string;
+  contractId: string; // Vinculo com o contrato
   type: EntryType;
   category: string;
   amount: number;
