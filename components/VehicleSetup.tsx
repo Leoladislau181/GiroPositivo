@@ -1,13 +1,13 @@
 
 import React, { useState, useRef } from 'react';
-import { Vehicle, VehicleType, ContractStatus } from '../types';
+import { Vehicle, VehicleType, ContractStatus } from '../src/types';
 import { formatMoneyInput, parseMoneyInput } from '../utils/formatters';
 import { v4 as uuidv4 } from 'uuid';
 import { X, Target, DollarSign, CalendarCheck } from 'lucide-react';
 
 interface VehicleSetupProps {
   userId: string;
-  onComplete: (v: Vehicle) => void;
+  onComplete: (v: Omit<Vehicle, 'id' | 'userId'>) => Promise<void>;
   onCancel?: () => void;
 }
 
@@ -90,11 +90,9 @@ export const VehicleSetup: React.FC<VehicleSetupProps> = ({ userId, onComplete, 
       endDateTime = new Date('2099-12-31T23:59:59'); 
     }
 
-    const finalVehicle: Vehicle = {
-      id: uuidv4(),
-      userId: userId,
+    const finalVehicle: Omit<Vehicle, 'id' | 'userId'> = {
       status: ContractStatus.ACTIVE,
-      name,
+      vehicleName: name,
       type,
       currentOdometer: parseInt(currentOdometer) || 0,
       appBalance: 0,

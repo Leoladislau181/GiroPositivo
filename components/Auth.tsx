@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { authService } from '../utils/auth';
-import { User } from '../types';
+import { User } from '../src/types';
 import { LogIn, UserPlus, Mail, Lock, User as UserIcon, AlertCircle, Loader2 } from 'lucide-react';
 
 interface AuthProps {
@@ -28,7 +28,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
     try {
       if (isLogin) {
         const user = await authService.login(formData.email, formData.password);
-        onLogin(user);
+        if (user) onLogin(user);
       } else {
         if (formData.password !== formData.confirmPassword) {
           throw new Error('As senhas não coincidem.');
@@ -36,8 +36,11 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         if (formData.password.length < 6) {
           throw new Error('A senha deve ter no mínimo 6 caracteres.');
         }
-        const user = await authService.register(formData.name, formData.email, formData.password);
-        onLogin(user);
+        const user = await authService.signup(formData.email, formData.password);
+        if (user) {
+          alert('Cadastro realizado! Por favor, verifique seu e-mail para confirmar a conta antes de fazer o login.');
+          setIsLogin(true); // Switch to login view
+        }
       }
     } catch (err: any) {
       setError(err.message || 'Ocorreu um erro inesperado.');

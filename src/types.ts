@@ -1,4 +1,3 @@
-
 export enum VehicleType {
   RENTED = 'RENTED',
   OWNED = 'OWNED'
@@ -28,60 +27,51 @@ export enum Platform {
 
 export interface User {
   id: string;
-  name: string;
   email: string;
-  phone?: string;
-  passwordHash: string;
-  createdAt: string;
 }
 
 export interface Vehicle {
-  id: string;
+  id?: string;
   userId: string;
   status: ContractStatus;
   type: VehicleType;
-  name: string;
+  vehicleName: string;
+  vehiclePlate?: string;
   profitGoal: number;
   currentOdometer: number;
   appBalance: number; 
-  contractValue: number; // Reserva Manutenção (Próprio) ou Aluguel (Alugado)
-  carInstallment?: number; // Parcela do Financiamento (Apenas Próprio)
-  contractStart: string; // ISO Datetime
-  contractEnd: string;   // ISO Datetime
+  contractValue: number;
+  carInstallment?: number;
+  contractStart: string;
+  contractEnd: string;
 }
 
 export interface Journey {
-  id: string;
+  id?: string;
   userId: string;
-  contractId: string; // Vinculo com o contrato
-  dataReferencia: string; // YYYY-MM-DD
-  dataInicioReal: string; // ISO Datetime
-  dataFimReal?: string;   // ISO Datetime
+  contractId: string;
+  dataReferencia: string;
+  dataInicioReal: string;
+  dataFimReal?: string;
   kmInicio: number;
   kmFim?: number;
-  balanceStart: number;   
-  balanceEnd?: number;    
+  balanceStart: number;
+  balanceEnd?: number;
   encerrada: boolean;
 }
 
 export interface Entry {
-  id: string;
+  id?: string;
   userId: string;
-  contractId: string; // Vinculo com o contrato
+  contractId: string;
   type: EntryType;
   category: string;
   amount: number;
   date: string;
   description: string;
-  platform?: Platform;
   journeyId?: string; 
   isRecharge?: boolean; 
   origin?: 'automatic' | 'manual' | 'manual_recharge';
-  kmRecorded?: number;
-  pricePerLiter?: number;
-  discount?: number;
-  balanceBefore?: number;
-  balanceAfter?: number;
 }
 
 export interface DailyStats {

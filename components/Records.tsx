@@ -1,12 +1,12 @@
 
 import React, { useState } from 'react';
-import { Entry, EntryType } from '../types';
+import { Entry, EntryType } from '../src/types';
 import { parseISO } from '../utils/calculations';
 import { Trash2, Edit2, TrendingUp, TrendingDown, Fuel, Smartphone, Lock, Filter } from 'lucide-react';
 
 interface RecordsProps {
   entries: Entry[];
-  onDelete: (id: string) => void;
+  onDelete: (id: string) => Promise<void>;
   onEdit: (entry: Entry) => void;
 }
 

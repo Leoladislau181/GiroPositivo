@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Vehicle, VehicleType, Journey, ContractStatus, User as UserType } from '../types';
+import { Vehicle, VehicleType, Journey, ContractStatus, User as UserType } from '../src/types';
 import { getContractDurationHours, parseISO } from '../utils/calculations';
 import { User, Car, Target, Power, ChevronRight, Settings, Calendar, Check, X, Gauge, History, Trash2, Clock, Edit2, FileText, TrendingUp, LogOut, Mail, Phone, Lock, AlertCircle, Loader2, MapPin, Wallet, CreditCard } from 'lucide-react';
 import { formatMoneyInput, parseMoneyInput } from '../utils/formatters';
@@ -13,11 +13,11 @@ interface MenuProps {
   onUpdateUser: (u: UserType) => void;
   onCloseContract: () => void;
   onLogout: () => void;
-  onDeleteContract: (id: string) => void;
-  onUpdateVehicle: (v: Partial<Vehicle>) => void;
+  onDeleteContract: (id: string) => Promise<void>;
+  onUpdateVehicle: (v: Partial<Vehicle>) => Promise<void>;
   journeys: Journey[];
-  onDeleteJourney: (id: string) => void;
-  onUpdateJourney: (j: Journey) => void;
+  onDeleteJourney: (id: string) => Promise<void>;
+  onUpdateJourney: (j: Journey) => Promise<void>;
   onOpenSetup: () => void;
 }
 

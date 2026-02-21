@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { EntryType, Platform, Entry } from '../types';
+import { EntryType, Platform, Entry } from '../src/types';
 import { v4 as uuidv4 } from 'uuid';
 import { X, Calendar as CalendarIcon, Tag, Gauge, Droplets, TicketPercent, Info, Percent } from 'lucide-react';
 import { format } from 'date-fns';
@@ -103,9 +103,7 @@ export const AddEntry: React.FC<AddEntryProps> = ({ userId, onAdd, onCancel, ini
     }
 
     try {
-      const newEntry: Entry = {
-        id: initialEntry?.id || uuidv4(),
-        userId: userId,
+      const newEntry: Omit<Entry, 'id' | 'userId'> = {
         type: finalType,
         category: finalCategory,
         amount: finalAmount,

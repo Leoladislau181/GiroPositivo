@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useMemo } from 'react';
-import { Entry, Vehicle, DailyStats, Journey, ContractStatus, EntryType } from '../types';
+import { Entry, Vehicle, DailyStats, Journey, ContractStatus, EntryType } from '../src/types';
 import { getDailyStats, formatDuration, getContractStatus, getNowInBR, formatToBRDate, BR_TZ, parseISO } from '../utils/calculations';
 import { TrendingUp, Fuel, Wallet, Calendar, Target, Play, Square, MapPin, Gauge, CheckCircle2, Clock, Smartphone, PlusCircle, TrendingDown, Tag, X, Layers, AlertCircle } from 'lucide-react';
 import { format as formatTZ } from 'date-fns-tz';
@@ -12,8 +12,9 @@ interface DashboardProps {
   entries: Entry[];
   vehicle: Vehicle | null;
   journeys: Journey[];
-  onUpdateJourney: (j: Journey) => void;
-  onDeleteJourney: (id: string) => void;
+        onAddJourney: (j: Omit<Journey, 'id' | 'userId'>) => Promise<void>;
+  onUpdateJourney: (j: Journey) => Promise<void>;
+  onDeleteJourney: (id: string) => Promise<void>;
   onSetupContract: () => void;
 }
 
@@ -141,9 +142,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userId, entries, vehicle, 
         parseISO(j.dataInicioReal) >= parseISO(vehicle.contractStart)
     );
 
-    const newJourney: Journey = {
-      id: uuidv4(),
-      userId: userId,
+                const newJourney: Omit<Journey, 'id' | 'userId'> = {
       contractId: vehicle.id, // Vínculo com o contrato ativo
       dataReferencia: todayStrBR,
       dataInicioReal: new Date().toISOString(), 
@@ -152,7 +151,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ userId, entries, vehicle, 
       encerrada: false
     };
     
-    onUpdateJourney(newJourney);
+    onAddJourney(newJourney);
     setShowJourneyModal(null);
     setKmInput('');
 

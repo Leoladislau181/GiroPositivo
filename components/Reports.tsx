@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { Entry, EntryType, Platform, Vehicle, Journey, ContractStatus, VehicleType } from '../types';
+import { Entry, EntryType, Platform, Vehicle, Journey, ContractStatus, VehicleType } from '../src/types';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { isWithinInterval, differenceInMinutes, differenceInCalendarDays } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';

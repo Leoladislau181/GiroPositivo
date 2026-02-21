@@ -1,4 +1,4 @@
-import { Vehicle, Entry, EntryType, DailyStats, Journey, ContractStatus, VehicleType } from '../types';
+import { Vehicle, Entry, Journey, ContractStatus, VehicleType } from '../src/types';
 import { 
   differenceInMinutes, 
   isBefore, 
